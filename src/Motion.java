@@ -13,7 +13,7 @@ public class Motion {
 		InputStream is = null;
 		DataInputStream ds = new DataInputStream(is);
 		
-		
+		//Adding comments for no reason
 		OutputStream os = null;
 		PrintStream ps = new PrintStream(os);
 		
