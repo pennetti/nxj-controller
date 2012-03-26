@@ -1,8 +1,6 @@
-
 public class Command {
 	
 	private final boolean isValid = false;
-	private int [] commandArray;
 	
 	public static void main (String [] args) {
 		
