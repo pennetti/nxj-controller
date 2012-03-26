@@ -5,6 +5,8 @@ public class CommandLog {
 	
 	ArrayList <Command> commandLog;
 
+	private int [] commandArray;
+
 	public static void main (String [] args) {
 		
 	}
