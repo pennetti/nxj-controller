@@ -9,12 +9,12 @@ public class Command {
 		if(type == 0)
 		{
 			command += "0";
-			ControllerGUI.jTextCommandLog.setText(ControllerGUI.jTextCommandLog.getText() + command + " -- Stop movement\n\n");
+			CommandLog.addSentCommand(command + " -- Stop movement\n\n");
 		}
 		else
 		{
 			command += "1";
-			ControllerGUI.jTextCommandLog.setText(ControllerGUI.jTextCommandLog.getText() + command + " -- Stop rotating arm\n\n");
+			CommandLog.addSentCommand(command + " -- Stop rotating arm\n\n");
 		}
 		
 		try {
@@ -24,11 +24,16 @@ public class Command {
 		}
 	}
 	
-	public static void setTravelSpeed()
+	public static void setTravelSpeed(int type)
 	{
-		int speed = ControllerGUI.jSliderDrivingSpeed.getValue();
+		int speed = 50;
+		
+		if(type == 1)
+			speed = ControllerGUI.jSliderDrivingSpeed.getValue();
+		if(type == 8)
+			speed = ControllerGUI.jSliderArmSpeed.getValue();
 
-		String command = "10";
+		String command = "1" + type;
 		
 		String hexSpeed = Integer.toHexString(speed);
 		
@@ -40,7 +45,7 @@ public class Command {
 
 		command += hexSpeed;
 		
-		ControllerGUI.jTextCommandLog.setText(ControllerGUI.jTextCommandLog.getText() + command + " -- Set speed to " + speed + "\n");
+		CommandLog.addSentCommand(command + " -- Set speed to " + speed + "\n");
 
 		try {
 			ConnectionHandler.sendCommand(command);
@@ -56,12 +61,12 @@ public class Command {
 		if(direction == 0)
 		{
 			command += "000";
-			ControllerGUI.jTextCommandLog.setText(ControllerGUI.jTextCommandLog.getText() + command + " -- Move forward\n\n");
+			CommandLog.addSentCommand(command + " -- Move forward\n\n");
 		}
 		else
 		{
 			command += "100";
-			ControllerGUI.jTextCommandLog.setText(ControllerGUI.jTextCommandLog.getText() + command + " -- Move backward\n\n");	
+			CommandLog.addSentCommand(command + " -- Move backward\n\n");
 		}
 
 		try {
@@ -78,12 +83,12 @@ public class Command {
 		if(direction == 0)
 		{
 			command += "000";
-			ControllerGUI.jTextCommandLog.setText(ControllerGUI.jTextCommandLog.getText() + command + " -- Start rotating right\n");
+			CommandLog.addSentCommand(command + " -- Start rotating right\n");
 		}
 		else
 		{
 			command += "100";
-			ControllerGUI.jTextCommandLog.setText(ControllerGUI.jTextCommandLog.getText() + command + " -- Start rotating left\n");
+			CommandLog.addSentCommand(command + " -- Start rotating left\n");
 		}
 		
 		try {
@@ -98,29 +103,17 @@ public class Command {
 		String command = "8";
 		
 		if(direction == 0)
-			command += "0";
+			command += "000";
 		else
-			command += "1";
-		
-		String hexSpeed = Integer.toHexString(ControllerGUI.jSliderArmSpeed.getValue());
-		
-		if(hexSpeed.length() == 1)
-		{
-			String temp = hexSpeed;
-			hexSpeed = "0" + temp;
-		}
-
-		command += hexSpeed;
+			command += "001";
 		
 		if(direction == 0)
 		{
-			ControllerGUI.jTextCommandLog.setText(ControllerGUI.jTextCommandLog.getText() + command
-					+ " -- Start rotating arm clockwise at speed " + ControllerGUI.jSliderArmSpeed.getValue() + "\n");
+			CommandLog.addSentCommand(command + " -- Start rotating arm clockwise at speed " + ControllerGUI.jSliderArmSpeed.getValue() + "\n");
 		}
 		else
 		{
-			ControllerGUI.jTextCommandLog.setText(ControllerGUI.jTextCommandLog.getText() + command
-					+ " -- Start rotating arm counterclockwise at speed " + ControllerGUI.jSliderArmSpeed.getValue() + "\n");
+			CommandLog.addSentCommand(command + " -- Start rotating arm counterclockwise at speed " + ControllerGUI.jSliderArmSpeed.getValue() + "\n");
 		}
 		
 		try {
@@ -151,13 +144,11 @@ public class Command {
 		
 		if(direction == 0)
 		{
-			ControllerGUI.jTextCommandLog.setText(ControllerGUI.jTextCommandLog.getText() + command 
-					+ " -- Circle right with radius " + ControllerGUI.jSliderTurnRadius.getValue() + "\n\n");
+			CommandLog.addSentCommand(command + " -- Circle right with radius " + ControllerGUI.jSliderTurnRadius.getValue() + "\n\n");
 		}
 		else
 		{
-			ControllerGUI.jTextCommandLog.setText(ControllerGUI.jTextCommandLog.getText() + command 
-					+ " -- Circle left with radius " + ControllerGUI.jSliderTurnRadius.getValue() + "\n\n");
+			CommandLog.addSentCommand(command + " -- Circle left with radius " + ControllerGUI.jSliderTurnRadius.getValue() + "\n\n");
 		}
 
 		try {
@@ -188,9 +179,13 @@ public class Command {
 		command += hexDistnace;
 		
 		if(direction == 0)
-			ControllerGUI.jTextCommandLog.setText(ControllerGUI.jTextCommandLog.getText() + command + " -- Move forward " + distance + " cm\n\n");
+		{
+			CommandLog.addSentCommand(command + " -- Move forward " + distance + " cm\n\n");
+		}
 		else
-			ControllerGUI.jTextCommandLog.setText(ControllerGUI.jTextCommandLog.getText() + command + " -- Move backward " + distance + " cm\n\n");
+		{
+			CommandLog.addSentCommand(command + " -- Move backward " + distance + " cm\n\n");
+		}
 
 		try {
 			ConnectionHandler.sendCommand(command);
@@ -227,13 +222,11 @@ public class Command {
 		
 		if(direction == 0)
 		{
-			ControllerGUI.jTextCommandLog.setText(ControllerGUI.jTextCommandLog.getText() + command
-					+ " -- Rotate right " + Integer.parseInt(angleOfRotation) + " degrees\n\n");
+			CommandLog.addSentCommand(command + " -- Rotate right " + Integer.parseInt(angleOfRotation) + " degrees\n\n");
 		}
 		else
 		{
-			ControllerGUI.jTextCommandLog.setText(ControllerGUI.jTextCommandLog.getText() + command
-					+ " -- Rotate left " + Integer.parseInt(angleOfRotation) + " degrees\n\n");
+			CommandLog.addSentCommand(command + " -- Rotate left " + Integer.parseInt(angleOfRotation) + " degrees\n\n");
 		}
 		
 		try {

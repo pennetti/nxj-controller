@@ -11,6 +11,8 @@ import java.awt.event.MouseListener;
 import java.awt.geom.Rectangle2D;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
+import java.util.Timer;
+import java.util.TimerTask;
 
 import javax.swing.BorderFactory;
 import javax.swing.ImageIcon;
@@ -28,7 +30,10 @@ import javax.swing.WindowConstants;
 import javax.swing.border.LineBorder;
 import javax.swing.SwingUtilities;
 
+import lejos.pc.comm.NXTComm;
 import lejos.pc.comm.NXTCommException;
+import lejos.pc.comm.NXTCommFactory;
+import lejos.pc.comm.NXTInfo;
 
 /**
 * This code was edited or generated using CloudGarden's Jigloo
@@ -55,13 +60,13 @@ public class ControllerGUI extends javax.swing.JFrame implements MouseListener, 
 	}
 	
 	private JLabel jLabelDrivingSpeed;
-	private JLabel jLabelCentimeters;
-	private JLabel jLabelTouchIcon;
+	private static JLabel jLabelCentimeters;
+	private static JLabel jLabelTouchIcon;
 	private JLabel jLabelArmClockwise;
 	private JLabel jLabelArmDown;
 	private JLabel jLabelCamera;
-	private JLabel jLabelLightLevel;
-	private JLabel jLabelDecibels;
+	private static JLabel jLabelLightLevel;
+	private static JLabel jLabelDecibels;
 	private JLabel jLabelTouch;
 	private JLabel jLabelUltrasonic;
 	private JLabel jLabelLight;
@@ -74,14 +79,21 @@ public class ControllerGUI extends javax.swing.JFrame implements MouseListener, 
 	private JLabel jLabelBackward;
 	private JLabel jLabelForward;
 	private JLabel jLabelBatteryIcon;
-	private JLabel jLabelBattery;
+	private static JLabel jLabelBattery;
 	private JLabel jLabelArmSpeed;
 	private JLabel jLabelDistanceUnits;
 	private JLabel jLabelAngleUnits;
 	private JLabel jLabelCameraDisplay;
+	private JLabel jLabelArmBounds;
+	private JLabel jLabelGray3;
+	private JLabel jLabelGray2;
+	private JLabel jLabelGray1;
+	static JLabel jLabelBluetoothImage;
+	static JLabel jLabelTouchSensor;
+	private static JLabel jLabelBluetoothConnection;
 
+	private JButton jButtonKeyboardInstructions;
 	private JButton jButtonLaunchBluetooth;
-	private JButton jButtonBluetooth;
 	private JButton jButtonCircleRight;
 	private JButton jButtonCircleLeft;
 	private JButton jButtonArmCounterclockwise;
@@ -91,7 +103,7 @@ public class ControllerGUI extends javax.swing.JFrame implements MouseListener, 
 	private JButton jButtonDown;
 	private JButton jButtonUp;
 	private JButton jButtonRight;
-	private JButton jButtonRefresh;
+	static JButton jButtonRefresh;
 	private JButton jButtonMoveForward;
 	private JButton jButtonMoveBackward;
 	private JButton jButtonTurnLeftDegrees;
@@ -99,7 +111,6 @@ public class ControllerGUI extends javax.swing.JFrame implements MouseListener, 
 	
 	private JScrollPane jScrollCommandLog;
 	private JScrollPane jScrollReceivedCommands;
-	private JScrollPane jScrollPane4;
 	private JScrollPane jScrollSentCommands;
 	
 	static JTextField jTextDistance;
@@ -111,12 +122,16 @@ public class ControllerGUI extends javax.swing.JFrame implements MouseListener, 
 	static JSlider jSliderDrivingSpeed;
 	static JSlider jSliderArmSpeed;
 
-	private JTextPane jTextReceivedCommands;
-	private JTextPane jTextSentCommands;
+	static JTextPane jTextReceivedCommands;
+	static JTextPane jTextSentCommands;
 	static JTextPane jTextCommandLog;
 	
 	private JTabbedPane jTabCommands;
 	
+	private JSeparator jSeparator20;
+	private JSeparator jSeparator19;
+	private JSeparator jSeparator18;
+	private JSeparator jSeparator17;
 	private JSeparator jSeparator16;
 	private JSeparator jSeparator15;
 	private JSeparator jSeparator14;
@@ -145,38 +160,17 @@ public class ControllerGUI extends javax.swing.JFrame implements MouseListener, 
     static DataInputStream iHandle;
     
     //SENSOR INFORMATION
-	boolean TOUCH = true;
-	int LIGHT_PERCENT = 40;
-	int ULTRASONIC = 73;
-	int DECIBELS = 40;
-	int BATTERY_PERCENT = 84;
+	boolean TOUCH = false;
+	int LIGHT_PERCENT = 0;
+	int ULTRASONIC = 0;
+	int DECIBELS = 0;
+	static int BATTERY_PERCENT = 0;
 
+	//Used for mouse held down
 	boolean firstPressed = true;
-	
-  //Used to display battery percent level
-  public void paint(Graphics g2) {
-	  super.paint(g2);
-	  
-	  int MAX_BATTERY_LEVEL = 137;
-	  int BASE = 555;
-	  int yCoordinate = BASE - MAX_BATTERY_LEVEL * BATTERY_PERCENT / 100;
-	  
-	  Graphics2D g = (Graphics2D) g2;
-	  
-	  if(BATTERY_PERCENT > 75)
-		  g.setPaint(Color.blue);
-	  else if(BATTERY_PERCENT > 50)
-		  g.setPaint(Color.green);
-	  else if(BATTERY_PERCENT > 25)
-		  g.setPaint(Color.yellow);
-	  else
-		  g.setPaint(Color.red);
-	  
-	  g.fill(new Rectangle2D.Double(754, yCoordinate, 82, MAX_BATTERY_LEVEL * BATTERY_PERCENT / 100));
-}
-    
-	// Runs the GUI
+    		
 	public static void main(String[] args) throws NXTCommException {
+		// Run the GUI
 		SwingUtilities.invokeLater(new Runnable() {
 			public void run() {
 				ControllerGUI inst = new ControllerGUI();
@@ -184,6 +178,140 @@ public class ControllerGUI extends javax.swing.JFrame implements MouseListener, 
 				inst.setVisible(true);
 			}
 		});
+		
+		// Establish Bluetooth connection
+		NXTComm nxtComm;
+		
+		try {
+			
+			nxtComm = NXTCommFactory.createNXTComm(NXTCommFactory.BLUETOOTH);
+			
+			NXTInfo info = new NXTInfo(NXTCommFactory.BLUETOOTH, "DATA_Robotics", "00:16:53:13:93:08");
+
+			nxtComm.open(info);
+			
+			os = new DataOutputStream(nxtComm.getOutputStream());
+			is = new DataInputStream(nxtComm.getInputStream());
+			
+			jTextCommandLog.setText(jTextCommandLog.getText() + "Trying to connect...\n");
+			jTextCommandLog.setText(jTextCommandLog.getText() + "       NXT Name -- \"" + ConnectionHandler.NXT_NAME
+					+ "\"\n       NXT Address -- \"" + ConnectionHandler.NXT_ADDRESS + "\"\n");
+			
+			jTextCommandLog.setText(jTextCommandLog.getText() + "Connection established\n\n");
+			
+			jLabelBluetoothConnection.setText("Connected");
+
+		} catch (Exception e1) {
+			jTextCommandLog.setText(jTextCommandLog.getText() + "Unable to establish connection\n\n");
+			e1.printStackTrace();
+			return;
+		}
+		
+		// Send robot status update
+		Timer timer = new Timer(true);
+		timer.schedule(new TimerTask(){
+
+			@Override
+			public void run() {
+				try {
+					ConnectionHandler.sendStatusCheck("F000");
+				} catch (NXTCommException e) {
+					e.printStackTrace();
+				}
+			}
+		}, 0, 500);
+		
+		// Receive and decode sensor values
+		while(true)
+		{									
+			char code = 'x';
+			String valueHex = "xx";
+			int mess = 0;
+			
+			try {
+				byte[] buffer = new byte[4];
+
+				int count = is.read(buffer); // pass the buffer to the input handle to read
+				if (count>0){    			
+					mess = ((0xFF & buffer[0]) << 24 | (0xFF & buffer[1]) << 16 | (0xFF & buffer[2]) << 8 | (0xFF & buffer[3]));
+				}	
+			} catch (Exception e) {
+				//e.printStackTrace();
+			}
+			
+			String message = Integer.toString(mess, 16);
+			
+			code = message.charAt(0);
+			valueHex = message.substring(1, 4);
+			int value = Integer.parseInt(valueHex, 16);
+						
+			switch(code){
+			// Light Sensor
+			case '1':		
+				jLabelLightLevel.setText(value + "%");
+				break;
+				
+			// Ultrasonic Sensor	
+			case '2':
+				jLabelCentimeters.setText(value + " cm");
+				break;
+				
+			// Touch Sensor
+			case '3':
+				if(value == 1)
+					jLabelTouchSensor.setText("Touch");
+				else
+					jLabelTouchSensor.setText("No Touch");
+				break;
+				
+			// Sound Sensor
+			case '4':
+				jLabelDecibels.setText(value + " dB");
+				break;
+				
+			// Battery Level	
+			case '5':
+				double level = ((double)value - 630) / (850 - 630) * 100;
+				BATTERY_PERCENT = (int)level;
+				jLabelBattery.setText("Battery " + BATTERY_PERCENT + "%");
+				break;
+				
+			default:
+				break;
+			}
+		}
+	}
+	
+	  //Used to display battery percent level
+	  public void paint(Graphics g2) {
+		  super.paint(g2);
+		  
+		  //Aligns paint function with Battery Icon Image
+		  int MAX_BATTERY_LEVEL = 137;
+		  int x_COORDINATE = jLabelBatteryIcon.getX() + 5;
+		  int y_COORDINATE = (jLabelBatteryIcon.getY() + jLabelBatteryIcon.getHeight() + 22) - MAX_BATTERY_LEVEL * BATTERY_PERCENT / 100;
+		  int WIDTH = 82;
+		  int HEIGHT = MAX_BATTERY_LEVEL * BATTERY_PERCENT / 100;
+		  
+		  Graphics2D g = (Graphics2D) g2;
+		  
+		  if(BATTERY_PERCENT > 75)
+			  g.setPaint(Color.blue);
+		  else if(BATTERY_PERCENT > 50)
+			  g.setPaint(Color.green);
+		  else if(BATTERY_PERCENT > 25)
+			  g.setPaint(Color.yellow);
+		  else
+			  g.setPaint(Color.red);
+		  
+		  g.fill(new Rectangle2D.Double(x_COORDINATE, y_COORDINATE, WIDTH, HEIGHT));
+	}
+	  
+	public static void setBluetoothImage(boolean connected) {
+//		if(connected)
+//			jLabelBluetoothImage.setIcon(new ImageIcon(jLabelBluetoothImage.getClass().getClassLoader().getResource("Images/Connected.png")));
+//		else
+//			jLabelBluetoothImage.setIcon(new ImageIcon(jLabelBluetoothImage.getClass().getClassLoader().getResource("Images/NotConnected.png")));
 	}
 	
 	public ControllerGUI() {
@@ -202,7 +330,7 @@ public class ControllerGUI extends javax.swing.JFrame implements MouseListener, 
 			{
 				jTabCommands = new JTabbedPane();
 				getContentPane().add(jTabCommands);
-				jTabCommands.setBounds(14, 323, 317, 236);
+				jTabCommands.setBounds(14, 312, 317, 236);
 				jTabCommands.addKeyListener(this);
 				jTabCommands.addMouseListener(this);
 				{
@@ -214,19 +342,19 @@ public class ControllerGUI extends javax.swing.JFrame implements MouseListener, 
 						jTextCommandLog.setEditable(false);
 						jTextCommandLog.setPreferredSize(new java.awt.Dimension(309, 205));
 						jTextCommandLog.addMouseListener(this);
+						jTextCommandLog.addKeyListener(this);
 					}
 				}
 				{
 					jScrollSentCommands = new JScrollPane();
 					jTabCommands.addTab("Sent", null, jScrollSentCommands, null);
 					{
-						jScrollPane4 = new JScrollPane();
-						jScrollSentCommands.setViewportView(jScrollPane4);
-						{
-							jTextSentCommands = new JTextPane();
-							jScrollPane4.setViewportView(jTextSentCommands);
-							jTextSentCommands.setText("Only sent commands will appear here...");
-						}
+						jTextSentCommands = new JTextPane();
+						jScrollSentCommands.setViewportView(jTextSentCommands);
+						jTextSentCommands.setEditable(false);
+						jTextSentCommands.setPreferredSize(new java.awt.Dimension(309, 205));
+						jTextSentCommands.addMouseListener(this);
+						jTextSentCommands.addKeyListener(this);
 					}
 				}
 				{
@@ -235,7 +363,10 @@ public class ControllerGUI extends javax.swing.JFrame implements MouseListener, 
 					{
 						jTextReceivedCommands = new JTextPane();
 						jScrollReceivedCommands.setViewportView(jTextReceivedCommands);
-						jTextReceivedCommands.setText("Only received confirmation messages will appear here...");
+						jTextReceivedCommands.setEditable(false);
+						jTextReceivedCommands.setPreferredSize(new java.awt.Dimension(309, 205));
+						jTextReceivedCommands.addMouseListener(this);
+						jTextReceivedCommands.addKeyListener(this);
 					}
 				}
 			}
@@ -243,7 +374,7 @@ public class ControllerGUI extends javax.swing.JFrame implements MouseListener, 
 				jButtonLeft = new JButton();
 				getContentPane().add(jButtonLeft);
 				jButtonLeft.setIcon(new ImageIcon(getClass().getClassLoader().getResource("Images/Left.png")));
-				jButtonLeft.setBounds(341, 84, 59, 73);
+				jButtonLeft.setBounds(339, 106, 59, 73);
 				jButtonLeft.addMouseListener(this);
 				jButtonLeft.addKeyListener(this);
 			}
@@ -251,7 +382,7 @@ public class ControllerGUI extends javax.swing.JFrame implements MouseListener, 
 				jButtonRight = new JButton();
 				getContentPane().add(jButtonRight);
 				jButtonRight.setIcon(new ImageIcon(getClass().getClassLoader().getResource("Images/Right.png")));
-				jButtonRight.setBounds(477, 84, 60, 73);
+				jButtonRight.setBounds(475, 106, 60, 73);
 				jButtonRight.addMouseListener(this);
 				jButtonRight.addKeyListener(this);
 			}
@@ -259,7 +390,7 @@ public class ControllerGUI extends javax.swing.JFrame implements MouseListener, 
 				jButtonUp = new JButton();
 				getContentPane().add(jButtonUp);
 				jButtonUp.setIcon(new ImageIcon(getClass().getClassLoader().getResource("Images/Up.png")));
-				jButtonUp.setBounds(400, 21, 77, 64);
+				jButtonUp.setBounds(398, 43, 77, 64);
 				jButtonUp.addKeyListener(this);
 				jButtonUp.addMouseListener(this);
 			}
@@ -267,7 +398,7 @@ public class ControllerGUI extends javax.swing.JFrame implements MouseListener, 
 				jButtonDown = new JButton();
 				getContentPane().add(jButtonDown);
 				jButtonDown.setIcon(new ImageIcon(getClass().getClassLoader().getResource("Images/Down.png")));
-				jButtonDown.setBounds(400, 157, 77, 61);
+				jButtonDown.setBounds(398, 179, 77, 61);
 				jButtonDown.addKeyListener(this);
 				jButtonDown.addMouseListener(this);
 			}
@@ -275,7 +406,7 @@ public class ControllerGUI extends javax.swing.JFrame implements MouseListener, 
 				jButtonStop = new JButton();
 				getContentPane().add(jButtonStop);
 				jButtonStop.setIcon(new ImageIcon(getClass().getClassLoader().getResource("Images/Stop.png")));
-				jButtonStop.setBounds(405, 89, 67, 63);
+				jButtonStop.setBounds(403, 111, 67, 63);
 				jButtonStop.addMouseListener(this);
 				jButtonStop.addKeyListener(this);
 				jButtonStop.addActionListener(new ActionListener() {
@@ -294,8 +425,8 @@ public class ControllerGUI extends javax.swing.JFrame implements MouseListener, 
 			{
 				jLabelArmSpeed = new JLabel();
 				getContentPane().add(jLabelArmSpeed);
-				jLabelArmSpeed.setText("Arm Speed:");
-				jLabelArmSpeed.setBounds(761, 139, 75, 16);
+				jLabelArmSpeed.setText("Arm Speed (deg/s):");
+				jLabelArmSpeed.setBounds(748, 134, 113, 16);
 				jLabelArmSpeed.addKeyListener(this);
 				jLabelArmSpeed.addMouseListener(this);
 			}
@@ -303,7 +434,7 @@ public class ControllerGUI extends javax.swing.JFrame implements MouseListener, 
 				jButtonArmClockwise = new JButton();
 				getContentPane().add(jButtonArmClockwise);
 				jButtonArmClockwise.setIcon(new ImageIcon(getClass().getClassLoader().getResource("Images/Clockwise.png")));
-				jButtonArmClockwise.setBounds(756, 50, 79, 81);
+				jButtonArmClockwise.setBounds(763, 47, 79, 81);
 				jButtonArmClockwise.addKeyListener(this);
 				jButtonArmClockwise.addMouseListener(this);
 			}
@@ -311,26 +442,25 @@ public class ControllerGUI extends javax.swing.JFrame implements MouseListener, 
 				jButtonArmCounterclockwise = new JButton();
 				getContentPane().add(jButtonArmCounterclockwise);
 				jButtonArmCounterclockwise.setIcon(new ImageIcon(getClass().getClassLoader().getResource("Images/Counterclockwise.png")));
-				jButtonArmCounterclockwise.setBounds(756, 182, 79, 81);
+				jButtonArmCounterclockwise.setBounds(763, 190, 79, 81);
 				jButtonArmCounterclockwise.addKeyListener(this);
 				jButtonArmCounterclockwise.addMouseListener(this);
 			}
 			{
 				jLabelBattery = new JLabel();
 				getContentPane().add(jLabelBattery);
-				jLabelBattery.setBounds(751, 355, 87, 16);
+				jLabelBattery.setBounds(765, 348, 87, 16);
 			}
 			{
 				jLabelBatteryIcon = new JLabel();
 				getContentPane().add(jLabelBatteryIcon);
-				
 				jLabelBattery.setText("Battery " + BATTERY_PERCENT + "%");
 				jLabelBattery.setHorizontalTextPosition(SwingConstants.CENTER);
 				jLabelBattery.setHorizontalAlignment(SwingConstants.CENTER);
 				jLabelBattery.addKeyListener(this);
 				jLabelBattery.addMouseListener(this);
 				jLabelBatteryIcon.setIcon(new ImageIcon(getClass().getClassLoader().getResource("Images/Battery0%.png")));
-				jLabelBatteryIcon.setBounds(749, 377, 87, 157);
+				jLabelBatteryIcon.setBounds(765, 369, 87, 157);
 				jLabelBatteryIcon.addKeyListener(this);
 				jLabelBatteryIcon.addMouseListener(this);
 			}
@@ -339,7 +469,7 @@ public class ControllerGUI extends javax.swing.JFrame implements MouseListener, 
 				jTextRotateAngle.setHorizontalAlignment(SwingConstants.CENTER);
 				jTextRotateAngle.setText("25");
 				getContentPane().add(jTextRotateAngle);
-				jTextRotateAngle.setBounds(661, 142, 44, 20);
+				jTextRotateAngle.setBounds(621, 138, 44, 20);
 				jTextRotateAngle.addMouseListener(this);
 				jTextRotateAngle.addKeyListener(this);
 			}
@@ -348,15 +478,15 @@ public class ControllerGUI extends javax.swing.JFrame implements MouseListener, 
 				jTextDistance.setHorizontalAlignment(SwingConstants.CENTER);
 				jTextDistance.setText("10");
 				getContentPane().add(jTextDistance);
-				jTextDistance.setBounds(661, 213, 44, 20);
+				jTextDistance.setBounds(613, 220, 44, 19);
 				jTextDistance.addMouseListener(this);
 				jTextDistance.addKeyListener(this);
 			}
 			{
 				jLabelDrivingSpeed = new JLabel();
 				getContentPane().add(jLabelDrivingSpeed);
-				jLabelDrivingSpeed.setText("Driving Speed:");
-				jLabelDrivingSpeed.setBounds(602, 9, 87, 16);
+				jLabelDrivingSpeed.setText("0       Drive Speed (cm/s):    100");
+				jLabelDrivingSpeed.setBounds(559, 11, 173, 16);
 				jLabelDrivingSpeed.addKeyListener(this);
 				jLabelDrivingSpeed.addMouseListener(this);
 			}
@@ -364,6 +494,8 @@ public class ControllerGUI extends javax.swing.JFrame implements MouseListener, 
 				jSliderDrivingSpeed = new JSlider();
 				getContentPane().add(jSliderDrivingSpeed);
 				jSliderDrivingSpeed.setBounds(554, 27, 178, 16);
+				jSliderDrivingSpeed.setBackground(Color.getHSBColor(0, 0, .78f));
+				jSliderDrivingSpeed.setFocusable(false);
 				jSliderDrivingSpeed.addMouseListener(this);
 				jSliderDrivingSpeed.addKeyListener(this);
 			}
@@ -371,7 +503,7 @@ public class ControllerGUI extends javax.swing.JFrame implements MouseListener, 
 				jLabelForward = new JLabel();
 				getContentPane().add(jLabelForward);
 				jLabelForward.setText("Forward");
-				jLabelForward.setBounds(415, 4, 47, 16);
+				jLabelForward.setBounds(413, 26, 47, 16);
 				jLabelForward.addKeyListener(this);
 				jLabelForward.addMouseListener(this);
 			}
@@ -379,7 +511,7 @@ public class ControllerGUI extends javax.swing.JFrame implements MouseListener, 
 				jLabelBackward = new JLabel();
 				getContentPane().add(jLabelBackward);
 				jLabelBackward.setText("Backward");
-				jLabelBackward.setBounds(409, 218, 58, 16);
+				jLabelBackward.setBounds(407, 240, 58, 16);
 				jLabelBackward.addKeyListener(this);
 				jLabelBackward.addMouseListener(this);
 			}
@@ -387,7 +519,7 @@ public class ControllerGUI extends javax.swing.JFrame implements MouseListener, 
 				jLabelLeft = new JLabel();
 				getContentPane().add(jLabelLeft);
 				jLabelLeft.setText("Turn Left");
-				jLabelLeft.setBounds(345, 67, 62, 16);
+				jLabelLeft.setBounds(343, 89, 62, 16);
 				jLabelLeft.addKeyListener(this);
 				jLabelLeft.addMouseListener(this);
 			}
@@ -395,15 +527,15 @@ public class ControllerGUI extends javax.swing.JFrame implements MouseListener, 
 				jLabelRight = new JLabel();
 				getContentPane().add(jLabelRight);
 				jLabelRight.setText("Turn Right");
-				jLabelRight.setBounds(478, 67, 69, 16);
+				jLabelRight.setBounds(476, 89, 69, 16);
 				jLabelRight.addKeyListener(this);
 				jLabelRight.addMouseListener(this);
 			}
 			{
 				jLabelTurnRadius = new JLabel();
 				getContentPane().add(jLabelTurnRadius);
-				jLabelTurnRadius.setText("Turning Radius:");
-				jLabelTurnRadius.setBounds(599, 50, 88, 16);
+				jLabelTurnRadius.setText("0         Turn Radius (cm):     100");
+				jLabelTurnRadius.setBounds(559, 52, 174, 16);
 				jLabelTurnRadius.addKeyListener(this);
 				jLabelTurnRadius.addMouseListener(this);
 			}
@@ -411,6 +543,7 @@ public class ControllerGUI extends javax.swing.JFrame implements MouseListener, 
 				jSliderTurnRadius = new JSlider();
 				getContentPane().add(jSliderTurnRadius);
 				jSliderTurnRadius.setBounds(555, 69, 177, 16);
+				jSliderTurnRadius.setFocusable(false);
 				jSliderTurnRadius.addMouseListener(this);
 				jSliderTurnRadius.addKeyListener(this);
 			}
@@ -439,7 +572,7 @@ public class ControllerGUI extends javax.swing.JFrame implements MouseListener, 
 			{
 				jSeparator4 = new JSeparator();
 				getContentPane().add(jSeparator4);
-				jSeparator4.setBounds(550, 258, 185, 10);
+				jSeparator4.setBounds(550, 270, 185, 10);
 				jSeparator4.addKeyListener(this);
 				jSeparator4.addMouseListener(this);
 			}
@@ -449,25 +582,20 @@ public class ControllerGUI extends javax.swing.JFrame implements MouseListener, 
 				getContentPane().add(jButtonCircleLeft);
 				jButtonCircleLeft.setText("Circle Left");
 				jButtonCircleLeft.setBounds(562, 88, 80, 26);
+				jButtonCircleLeft.setFocusable(false);
 				jButtonCircleLeft.addMouseListener(this);
 				jButtonCircleLeft.addKeyListener(this);
 				jButtonCircleLeft.addActionListener(new ActionListener() {
 					
 					public void actionPerformed(ActionEvent e)
-					{		            	
-						//		            	double arcRadius = (double)jSlider2.getValue();
-						//		            	
-						//		        		double wheelDiameter = 2.5;
-						//		        		double trackWidth = 5; // distance between center of two wheels
-						//		        		
-						//		        		DifferentialPilot pilot = new DifferentialPilot(wheelDiameter, trackWidth, Motor.A, Motor.C);
-						//		        		pilot.arc(arcRadius, 360);
-						
+					{		            						
 						//Execute when button is pressed
 						jButtonLeft.setIcon(new ImageIcon(getClass().getClassLoader().getResource("Images/Left.png")));
 						jButtonRight.setIcon(new ImageIcon(getClass().getClassLoader().getResource("Images/Right.png")));
 						jButtonUp.setIcon(new ImageIcon(getClass().getClassLoader().getResource("Images/Up.png")));
 						jButtonDown.setIcon(new ImageIcon(getClass().getClassLoader().getResource("Images/Down.png")));
+						
+						Command.setTravelSpeed(1);
 						
 						Command.circle(1);
 					}
@@ -493,25 +621,20 @@ public class ControllerGUI extends javax.swing.JFrame implements MouseListener, 
 				getContentPane().add(jButtonCircleRight);
 				jButtonCircleRight.setText("Circle Right");
 				jButtonCircleRight.setBounds(647, 88, 76, 26);
+				jButtonCircleRight.setFocusable(false);
 				jButtonCircleRight.addMouseListener(this);
 				jButtonCircleRight.addKeyListener(this);
 				jButtonCircleRight.addActionListener(new ActionListener() {
 					
 					public void actionPerformed(ActionEvent e)
 					{		            	
-						//		            	double arcRadius = (double)jSlider2.getValue();
-						//		            	
-						//		        		double wheelDiameter = 2.5;
-						//		        		double trackWidth = 5; // distance between center of two wheels
-						//		        		
-						//		        		DifferentialPilot pilot = new DifferentialPilot(wheelDiameter, trackWidth, Motor.A, Motor.C);
-						//		        		pilot.arc(arcRadius * -1, 360);
-						
 						//Execute when button is pressed
 						jButtonLeft.setIcon(new ImageIcon(getClass().getClassLoader().getResource("Images/Left.png")));
 						jButtonRight.setIcon(new ImageIcon(getClass().getClassLoader().getResource("Images/Right.png")));
 						jButtonUp.setIcon(new ImageIcon(getClass().getClassLoader().getResource("Images/Up.png")));
 						jButtonDown.setIcon(new ImageIcon(getClass().getClassLoader().getResource("Images/Down.png")));
+						
+						Command.setTravelSpeed(1);
 						
 						Command.circle(0);
 					}
@@ -520,31 +643,18 @@ public class ControllerGUI extends javax.swing.JFrame implements MouseListener, 
 			{
 				jLabelBluetooth = new JLabel();
 				getContentPane().add(jLabelBluetooth);
-				jLabelBluetooth.setText("Bluetooth Connection");
-				jLabelBluetooth.setBounds(350, 372, 127, 16);
+				jLabelBluetooth.setText("BLUETOOTH");
+				jLabelBluetooth.setBounds(352, 366, 126, 16);
+				jLabelBluetooth.setHorizontalAlignment(SwingConstants.CENTER);
 				jLabelBluetooth.addKeyListener(this);
 				jLabelBluetooth.addMouseListener(this);
-			}
-			{
-				boolean connected = true;
-				
-				jButtonBluetooth = new JButton();
-				getContentPane().add(jButtonBluetooth);
-				
-				if(connected)
-					jButtonBluetooth.setIcon(new ImageIcon(getClass().getClassLoader().getResource("Images/Connected.png")));
-				else
-					jButtonBluetooth.setIcon(new ImageIcon(getClass().getClassLoader().getResource("Images/NotConnected.png")));
-
-				jButtonBluetooth.setBounds(348, 395, 127, 127);
-				jButtonBluetooth.addKeyListener(this);
-				jButtonBluetooth.addMouseListener(this);
 			}
 			{
 				jLabelSensors = new JLabel();
 				getContentPane().add(jLabelSensors);
 				jLabelSensors.setText("SENSORS");
-				jLabelSensors.setBounds(583, 368, 63, 16);
+				jLabelSensors.setBounds(499, 366, 245, 16);
+				jLabelSensors.setHorizontalAlignment(SwingConstants.CENTER);
 				jLabelSensors.addKeyListener(this);
 				jLabelSensors.addMouseListener(this);
 			}
@@ -552,7 +662,7 @@ public class ControllerGUI extends javax.swing.JFrame implements MouseListener, 
 				jLabelSound = new JLabel();
 				getContentPane().add(jLabelSound);
 				jLabelSound.setText("Sound");
-				jLabelSound.setBounds(492, 395, 48, 16);
+				jLabelSound.setBounds(502, 393, 48, 16);
 				jLabelSound.addKeyListener(this);
 				jLabelSound.addMouseListener(this);
 			}
@@ -560,7 +670,7 @@ public class ControllerGUI extends javax.swing.JFrame implements MouseListener, 
 				jLabelLight = new JLabel();
 				getContentPane().add(jLabelLight);
 				jLabelLight.setText("Light");
-				jLabelLight.setBounds(537, 395, 48, 16);
+				jLabelLight.setBounds(547, 393, 48, 16);
 				jLabelLight.addKeyListener(this);
 				jLabelLight.addMouseListener(this);
 			}
@@ -568,7 +678,7 @@ public class ControllerGUI extends javax.swing.JFrame implements MouseListener, 
 				jLabelUltrasonic = new JLabel();
 				getContentPane().add(jLabelUltrasonic);
 				jLabelUltrasonic.setText("Ultrasonic");
-				jLabelUltrasonic.setBounds(576, 395, 60, 16);
+				jLabelUltrasonic.setBounds(586, 393, 60, 16);
 				jLabelUltrasonic.addKeyListener(this);
 				jLabelUltrasonic.addMouseListener(this);
 			}
@@ -576,7 +686,7 @@ public class ControllerGUI extends javax.swing.JFrame implements MouseListener, 
 				jLabelTouch = new JLabel();
 				getContentPane().add(jLabelTouch);
 				jLabelTouch.setText("Touch Sensor");
-				jLabelTouch.setBounds(646, 395, 85, 16);
+				jLabelTouch.setBounds(656, 393, 85, 16);
 				jLabelTouch.addKeyListener(this);
 				jLabelTouch.addMouseListener(this);
 			}
@@ -584,7 +694,8 @@ public class ControllerGUI extends javax.swing.JFrame implements MouseListener, 
 				jLabelDecibels = new JLabel();
 				getContentPane().add(jLabelDecibels);
 				jLabelDecibels.setText(DECIBELS + " dB");
-				jLabelDecibels.setBounds(495, 450, 32, 16);
+				jLabelDecibels.setBounds(502, 448, 39, 16);
+				jLabelDecibels.setHorizontalAlignment(SwingConstants.CENTER);
 				jLabelDecibels.addKeyListener(this);
 				jLabelDecibels.addMouseListener(this);
 			}
@@ -592,7 +703,8 @@ public class ControllerGUI extends javax.swing.JFrame implements MouseListener, 
 				jLabelLightLevel = new JLabel();
 				getContentPane().add(jLabelLightLevel);
 				jLabelLightLevel.setText(LIGHT_PERCENT + "%");
-				jLabelLightLevel.setBounds(540, 450, 23, 16);
+				jLabelLightLevel.setBounds(545, 448, 34, 16);
+				jLabelLightLevel.setHorizontalAlignment(SwingConstants.CENTER);
 				jLabelLightLevel.addKeyListener(this);
 				jLabelLightLevel.addMouseListener(this);
 			}
@@ -600,7 +712,7 @@ public class ControllerGUI extends javax.swing.JFrame implements MouseListener, 
 				jSeparator7 = new JSeparator();
 				getContentPane().add(jSeparator7);
 				jSeparator7.setOrientation(SwingConstants.VERTICAL);
-				jSeparator7.setBounds(532, 392, 5, 115);
+				jSeparator7.setBounds(542, 390, 5, 115);
 				jSeparator7.addKeyListener(this);
 				jSeparator7.addMouseListener(this);
 			}
@@ -608,7 +720,7 @@ public class ControllerGUI extends javax.swing.JFrame implements MouseListener, 
 				jSeparator8 = new JSeparator();
 				getContentPane().add(jSeparator8);
 				jSeparator8.setOrientation(SwingConstants.VERTICAL);
-				jSeparator8.setBounds(570, 392, 9, 115);
+				jSeparator8.setBounds(580, 390, 9, 115);
 				jSeparator8.addKeyListener(this);
 				jSeparator8.addMouseListener(this);
 			}
@@ -616,21 +728,22 @@ public class ControllerGUI extends javax.swing.JFrame implements MouseListener, 
 				jLabelCentimeters = new JLabel();
 				getContentPane().add(jLabelCentimeters);
 				jLabelCentimeters.setText(ULTRASONIC + " cm");
-				jLabelCentimeters.setBounds(587, 450, 35, 16);
+				jLabelCentimeters.setBounds(583, 448, 64, 16);
+				jLabelCentimeters.setHorizontalAlignment(SwingConstants.CENTER);
 				jLabelCentimeters.addKeyListener(this);
 				jLabelCentimeters.addMouseListener(this);
 			}
 			{
 				jSeparator9 = new JSeparator();
 				getContentPane().add(jSeparator9);
-				jSeparator9.setBounds(489, 391, 245, 10);
+				jSeparator9.setBounds(499, 389, 245, 10);
 				jSeparator9.addKeyListener(this);
 				jSeparator9.addMouseListener(this);
 			}
 			{
 				jSeparator10 = new JSeparator();
 				getContentPane().add(jSeparator10);
-				jSeparator10.setBounds(489, 507, 245, 8);
+				jSeparator10.setBounds(499, 505, 245, 8);
 				jSeparator10.addKeyListener(this);
 				jSeparator10.addMouseListener(this);
 			}
@@ -638,7 +751,7 @@ public class ControllerGUI extends javax.swing.JFrame implements MouseListener, 
 				jSeparator11 = new JSeparator();
 				getContentPane().add(jSeparator11);
 				jSeparator11.setOrientation(SwingConstants.VERTICAL);
-				jSeparator11.setBounds(489, 391, 11, 117);
+				jSeparator11.setBounds(499, 389, 11, 117);
 				jSeparator11.addKeyListener(this);
 				jSeparator11.addMouseListener(this);
 			}
@@ -646,14 +759,14 @@ public class ControllerGUI extends javax.swing.JFrame implements MouseListener, 
 				jSeparator12 = new JSeparator();
 				getContentPane().add(jSeparator12);
 				jSeparator12.setOrientation(SwingConstants.VERTICAL);
-				jSeparator12.setBounds(638, 391, 10, 116);
+				jSeparator12.setBounds(648, 389, 10, 116);
 				jSeparator12.addKeyListener(this);
 				jSeparator12.addMouseListener(this);
 			}
 			{
 				jSeparator13 = new JSeparator();
 				getContentPane().add(jSeparator13);
-				jSeparator13.setBounds(489, 416, 245, 9);
+				jSeparator13.setBounds(499, 414, 245, 9);
 				jSeparator13.addKeyListener(this);
 				jSeparator13.addMouseListener(this);
 			}
@@ -661,7 +774,7 @@ public class ControllerGUI extends javax.swing.JFrame implements MouseListener, 
 				jSeparator14 = new JSeparator();
 				getContentPane().add(jSeparator14);
 				jSeparator14.setOrientation(SwingConstants.VERTICAL);
-				jSeparator14.setBounds(733, 391, 10, 116);
+				jSeparator14.setBounds(743, 389, 10, 116);
 				jSeparator14.addKeyListener(this);
 				jSeparator14.addMouseListener(this);
 			}
@@ -672,7 +785,8 @@ public class ControllerGUI extends javax.swing.JFrame implements MouseListener, 
 					jLabelTouchIcon.setIcon(new ImageIcon(getClass().getClassLoader().getResource("Images/Touch.png")));
 				else
 					jLabelTouchIcon.setIcon(new ImageIcon(getClass().getClassLoader().getResource("Images/NoTouch.png")));
-				jLabelTouchIcon.setBounds(645, 421, 82, 82);
+				jLabelTouchIcon.setVisible(false);
+				jLabelTouchIcon.setBounds(655, 419, 82, 82);
 				jLabelTouchIcon.addKeyListener(this);
 				jLabelTouchIcon.addMouseListener(this);
 			}
@@ -689,7 +803,7 @@ public class ControllerGUI extends javax.swing.JFrame implements MouseListener, 
 				jLabelArmDown = new JLabel();
 				getContentPane().add(jLabelArmDown);
 				jLabelArmDown.setText("<html>&#160&#160&#160&#160&#160&#160&#160Rotate Arm<br>Counterclockwise</html>");
-				jLabelArmDown.setBounds(742, 264, 103, 32);
+				jLabelArmDown.setBounds(749, 272, 103, 32);
 				jLabelArmDown.addKeyListener(this);
 				jLabelArmDown.addMouseListener(this);
 			}
@@ -697,7 +811,7 @@ public class ControllerGUI extends javax.swing.JFrame implements MouseListener, 
 				jLabelArmClockwise = new JLabel();
 				getContentPane().add(jLabelArmClockwise);
 				jLabelArmClockwise.setText("<html>Rotate Arm<br>&#160Clockwise</html>");
-				jLabelArmClockwise.setBounds(760, 13, 69, 38);
+				jLabelArmClockwise.setBounds(767, 10, 69, 38);
 				jLabelArmClockwise.setHorizontalAlignment(SwingConstants.CENTER);
 				jLabelArmClockwise.addKeyListener(this);
 				jLabelArmClockwise.addMouseListener(this);
@@ -706,16 +820,43 @@ public class ControllerGUI extends javax.swing.JFrame implements MouseListener, 
 				jButtonLaunchBluetooth = new JButton();
 				getContentPane().add(jButtonLaunchBluetooth);
 				jButtonLaunchBluetooth.setText("Launch Bluetooth");
-				jButtonLaunchBluetooth.setBounds(559, 267, 169, 33);
+				jButtonLaunchBluetooth.setBounds(556, 276, 173, 26);
+				jButtonLaunchBluetooth.setFocusable(false);
 				jButtonLaunchBluetooth.addMouseListener(this);
 				jButtonLaunchBluetooth.addKeyListener(this);
 				jButtonLaunchBluetooth.addActionListener(new ActionListener() {
 					
 					public void actionPerformed(ActionEvent e)
-					{	
-						ConnectionHandler.launchBluetooth();
+					{						
+						NXTComm nxtComm;
+						
+						try {
+							nxtComm = NXTCommFactory.createNXTComm(NXTCommFactory.BLUETOOTH);
+							
+							NXTInfo info = new NXTInfo(NXTCommFactory.BLUETOOTH, "DATA_Robotics", "00:16:53:13:93:08");
+//							NXTInfo info = new NXTInfo(NXTCommFactory.BLUETOOTH, "7a", "00:16:53:13:f6:a4");
+
+							nxtComm.open(info);
+							
+							os = new DataOutputStream(nxtComm.getOutputStream());
+							is = new DataInputStream(nxtComm.getInputStream());
+							
+							jTextCommandLog.setText(jTextCommandLog.getText() + "Connection established\n\n");
+							
+						} catch (Exception e1) {
+							jTextCommandLog.setText(jTextCommandLog.getText() + "Unable to establish connection\n\n");
+							e1.printStackTrace();
+							return;
+						}
 					}
 				}); 
+//				jButtonLaunchBluetooth.addActionListener(new ActionListener() {
+//					
+//					public void actionPerformed(ActionEvent e)
+//					{	
+//						ConnectionHandler.launchBluetooth();
+//					}
+//				}); 
 			}
 			{
 				jSeparator15 = new JSeparator();
@@ -728,19 +869,13 @@ public class ControllerGUI extends javax.swing.JFrame implements MouseListener, 
 				jButtonRefresh = new JButton();
 				getContentPane().add(jButtonRefresh);
 				jButtonRefresh.setText("Refresh Sensors");
-				jButtonRefresh.setBounds(550, 519, 130, 26);
+				jButtonRefresh.setBounds(560, 517, 130, 26);
 				jButtonRefresh.addKeyListener(this);
 				jButtonRefresh.addMouseListener(this);
 				jButtonRefresh.addActionListener(new ActionListener() {
 					
 					public void actionPerformed(ActionEvent e)
-					{
-						TOUCH = false;
-						LIGHT_PERCENT = 20;
-						ULTRASONIC = 93;
-						DECIBELS = 30;
-						BATTERY_PERCENT = 74;
-						
+					{	
 						if(TOUCH)
 							jLabelTouchIcon.setIcon(new ImageIcon(getClass().getClassLoader().getResource("Images/Touch.png")));
 						else
@@ -761,7 +896,8 @@ public class ControllerGUI extends javax.swing.JFrame implements MouseListener, 
 			{
 				jSliderArmSpeed = new JSlider();
 				getContentPane().add(jSliderArmSpeed);
-				jSliderArmSpeed.setBounds(748, 157, 94, 16);
+				jSliderArmSpeed.setBounds(747, 155, 110, 16);
+				jSliderArmSpeed.setFocusable(false);
 				jSliderArmSpeed.addMouseListener(this);
 				jSliderArmSpeed.addKeyListener(this);
 			}
@@ -769,7 +905,7 @@ public class ControllerGUI extends javax.swing.JFrame implements MouseListener, 
 				jLabelAngleUnits = new JLabel();
 				getContentPane().add(jLabelAngleUnits);
 				jLabelAngleUnits.setText("deg");
-				jLabelAngleUnits.setBounds(708, 143, 28, 16);
+				jLabelAngleUnits.setBounds(631, 158, 28, 16);
 				jLabelAngleUnits.addKeyListener(this);
 				jLabelAngleUnits.addMouseListener(this);
 			}
@@ -777,35 +913,38 @@ public class ControllerGUI extends javax.swing.JFrame implements MouseListener, 
 				jLabelDistanceUnits = new JLabel();
 				getContentPane().add(jLabelDistanceUnits);
 				jLabelDistanceUnits.setText("cm");
-				jLabelDistanceUnits.setBounds(709, 215, 18, 16);
+				jLabelDistanceUnits.setBounds(658, 221, 18, 16);
 				jLabelDistanceUnits.addKeyListener(this);
 				jLabelDistanceUnits.addMouseListener(this);
 			}
 			{
 				jTextAreaInstructions = new JTextArea();
 				getContentPane().add(jTextAreaInstructions);
-				jTextAreaInstructions.setText("----------Keyboard Instructions----------"
-						+ "\nUp/Down arrows: forward/backward" + "\n   Left/Right arrows: rotate left/right"
-						+ "\n                  Space bar: stop");
+				jTextAreaInstructions.setText("Up/Down arrows: forward/backward" + "\n   Left/Right arrows: rotate left/right"
+						+ "\n                  Space bar: stop"
+						+ "\nD/A keys: arm clock/counterclockwise");
 				jTextAreaInstructions.setAlignmentX(SwingConstants.CENTER);
-				jTextAreaInstructions.setBounds(338, 237, 201, 71);
+				jTextAreaInstructions.setBounds(335, 294, 208, 70);
 				jTextAreaInstructions.setBorder(BorderFactory.createLineBorder(Color.BLACK));
 				jTextAreaInstructions.setLineWrap(true);
 				jTextAreaInstructions.setFocusable(false);
 				jTextAreaInstructions.addKeyListener(this);
 				jTextAreaInstructions.addMouseListener(this);
+				jTextAreaInstructions.setVisible(false);
 			}
 			{
 				jButtonMoveForward = new JButton();
 				getContentPane().add(jButtonMoveForward);
-				jButtonMoveForward.setText("Go Forward:");
-				jButtonMoveForward.setBounds(557, 194, 99, 26);
+				jButtonMoveForward.setText("Go Forward");
+				jButtonMoveForward.setBounds(571, 192, 143, 26);
 				jButtonMoveForward.setMargin(new Insets(0,0,0,0));
+				jButtonMoveForward.setFocusable(false);
+				jButtonMoveForward.addKeyListener(this);
 				jButtonMoveForward.addActionListener(new ActionListener() {
 					
 					public void actionPerformed(ActionEvent e)
 					{
-						Command.setTravelSpeed();
+						Command.setTravelSpeed(1);
 						
 						Command.moveDistance(0);
 					}
@@ -814,14 +953,16 @@ public class ControllerGUI extends javax.swing.JFrame implements MouseListener, 
 			{
 				jButtonMoveBackward = new JButton();
 				getContentPane().add(jButtonMoveBackward);
-				jButtonMoveBackward.setText("Go Backward:");
-				jButtonMoveBackward.setBounds(558, 227, 98, 26);
+				jButtonMoveBackward.setText("Go Backward");
+				jButtonMoveBackward.setBounds(571, 241, 143, 26);
 				jButtonMoveBackward.setMargin(new Insets(0,0,0,0));
+				jButtonMoveBackward.setFocusable(false);
+				jButtonMoveBackward.addKeyListener(this);
 				jButtonMoveBackward.addActionListener(new ActionListener() {
 					
 					public void actionPerformed(ActionEvent e)
 					{
-						Command.setTravelSpeed();
+						Command.setTravelSpeed(1);
 						
 						Command.moveDistance(1);
 					}
@@ -835,12 +976,17 @@ public class ControllerGUI extends javax.swing.JFrame implements MouseListener, 
 			{
 				jButtonTurnRightDegrees = new JButton();
 				getContentPane().add(jButtonTurnRightDegrees);
-				jButtonTurnRightDegrees.setText("Turn Right:");
-				jButtonTurnRightDegrees.setBounds(556, 125, 100, 26);
+				jButtonTurnRightDegrees.setText("<html>Rotate<br>&#160Right</html>");
+				jButtonTurnRightDegrees.setMargin(new Insets(5,4,5,4));
+				jButtonTurnRightDegrees.setBounds(667, 127, 63, 55);
+				jButtonTurnRightDegrees.addKeyListener(this);
+				jButtonTurnRightDegrees.setFocusable(false);
 				jButtonTurnRightDegrees.addActionListener(new ActionListener() {
 					
 					public void actionPerformed(ActionEvent e)
 					{
+						Command.setTravelSpeed(1);
+						
 						Command.turnDegrees(0);
 					}
 				});
@@ -849,12 +995,17 @@ public class ControllerGUI extends javax.swing.JFrame implements MouseListener, 
 			{
 				jButtonTurnLeftDegrees = new JButton();
 				getContentPane().add(jButtonTurnLeftDegrees);
-				jButtonTurnLeftDegrees.setText("Turn Left:");
-				jButtonTurnLeftDegrees.setBounds(556, 156, 100, 26);
+				jButtonTurnLeftDegrees.setText("<html>Rotate<br>&#160&#160Left</html>");
+				jButtonTurnLeftDegrees.setMargin(new Insets(5,4,5,4));
+				jButtonTurnLeftDegrees.setBounds(556, 127, 63, 55);
+				jButtonTurnLeftDegrees.addKeyListener(this);
+				jButtonTurnLeftDegrees.setFocusable(false);
 				jButtonTurnLeftDegrees.addActionListener(new ActionListener() {
 					
 					public void actionPerformed(ActionEvent e)
 					{
+						Command.setTravelSpeed(1);
+						
 						Command.turnDegrees(1);
 					}
 				});     
@@ -865,8 +1016,99 @@ public class ControllerGUI extends javax.swing.JFrame implements MouseListener, 
 				jLabelCameraDisplay.setText("CAMERA DISPLAY");
 				jLabelCameraDisplay.setBounds(118, 20, 101, 16);
 			}
+			{
+				jButtonKeyboardInstructions = new JButton();
+				getContentPane().add(jButtonKeyboardInstructions);
+				jButtonKeyboardInstructions.setText("Show Keyboard Instructions");
+				jButtonKeyboardInstructions.setBounds(341, 266, 194, 25);
+				jButtonKeyboardInstructions.addKeyListener(this);
+				jButtonKeyboardInstructions.addActionListener(new ActionListener() {
+					
+					public void actionPerformed(ActionEvent e)
+					{
+						if(!jTextAreaInstructions.isVisible())
+						{
+							jTextAreaInstructions.setVisible(true);
+							jButtonKeyboardInstructions.setText("Hide Keyboard Instructions");
+						}
+						else
+						{
+							jTextAreaInstructions.setVisible(false);
+							jButtonKeyboardInstructions.setText("Show Keyboard Instructions");
+						}
+					}
+				});    
+			}
+			{
+				jLabelArmBounds = new JLabel();
+				getContentPane().add(jLabelArmBounds);
+				jLabelArmBounds.setText("0                          100");
+				jLabelArmBounds.setBounds(751, 167, 106, 16);
+			}
+			{
+				jLabelGray1 = new JLabel();
+				getContentPane().add(jLabelGray1);
+				jLabelGray1.setIcon(new ImageIcon(getClass().getClassLoader().getResource("Images/gray.png")));
+				jLabelGray1.setBounds(550, 10, 183, 35);
+			}
+			{
+				jLabelGray2 = new JLabel();
+				getContentPane().add(jLabelGray2);
+				jLabelGray2.setIcon(new ImageIcon(getClass().getClassLoader().getResource("Images/gray.png")));
+				jLabelGray2.setBounds(552, 121, 181, 65);
+			}
+			{
+				jLabelGray3 = new JLabel();
+				getContentPane().add(jLabelGray3);
+				jLabelGray3.setIcon(new ImageIcon(getClass().getClassLoader().getResource("Images/gray.png")));
+				jLabelGray3.setBounds(552, 270, 181, 36);
+			}
+			{
+				jLabelBluetoothImage = new JLabel();
+				getContentPane().add(jLabelBluetoothImage);
+				jLabelBluetoothImage.setIcon(new ImageIcon(getClass().getClassLoader().getResource("Images/NotConnected.png")));
+				jLabelBluetoothImage.setBounds(354, 387, 120, 120);
+				jLabelBluetoothImage.setVisible(false);
+				jLabelBluetoothImage.setBorder(new LineBorder(new java.awt.Color(0,0,0), 1, false));
+			}
+			{
+				jLabelTouchSensor = new JLabel();
+				getContentPane().add(jLabelTouchSensor);
+				jLabelTouchSensor.setText("No Touch");
+				jLabelTouchSensor.setBounds(652, 448, 89, 16);
+				jLabelTouchSensor.setHorizontalAlignment(SwingConstants.CENTER);
+			}
+			{
+				jLabelBluetoothConnection = new JLabel();
+				getContentPane().add(jLabelBluetoothConnection);
+				jLabelBluetoothConnection.setText("Not Connected");
+				jLabelBluetoothConnection.setBounds(352, 438, 125, 16);
+				jLabelBluetoothConnection.setHorizontalAlignment(SwingConstants.CENTER);
+			}
+			{
+				jSeparator17 = new JSeparator();
+				getContentPane().add(jSeparator17);
+				jSeparator17.setBounds(352, 390, 126, 10);
+			}
+			{
+				jSeparator18 = new JSeparator();
+				getContentPane().add(jSeparator18);
+				jSeparator18.setBounds(352, 505, 126, 10);
+			}
+			{
+				jSeparator19 = new JSeparator();
+				getContentPane().add(jSeparator19);
+				jSeparator19.setOrientation(SwingConstants.VERTICAL);
+				jSeparator19.setBounds(478, 390, 10, 116);
+			}
+			{
+				jSeparator20 = new JSeparator();
+				getContentPane().add(jSeparator20);
+				jSeparator20.setOrientation(SwingConstants.VERTICAL);
+				jSeparator20.setBounds(351, 390, 10, 115);
+			}
 			pack();
-			this.setSize(860, 600);
+			this.setSize(876, 593);
 		} catch (Exception e) {
 		    //add your error handling code here
 			e.printStackTrace();
@@ -891,11 +1133,18 @@ public class ControllerGUI extends javax.swing.JFrame implements MouseListener, 
 	@Override
 	public void mousePressed(MouseEvent arg0) {
         
+		if(arg0.getComponent() == jButtonLaunchBluetooth)
+		{
+			jTextCommandLog.setText(jTextCommandLog.getText() + "Trying to connect...\n");
+			jTextCommandLog.setText(jTextCommandLog.getText() + "       NXT Name -- \"" + ConnectionHandler.NXT_NAME
+					+ "\"\n       NXT Address -- \"" + ConnectionHandler.NXT_ADDRESS + "\"\n");
+		}
+		
 		if(arg0.getComponent() == jButtonUp)
 		{
 			jButtonUp.setIcon(new ImageIcon(getClass().getClassLoader().getResource("Images/GoingUp.png")));
 
-			Command.setTravelSpeed();
+			Command.setTravelSpeed(1);
 			
 			Command.startMove(0);
 		}
@@ -904,7 +1153,7 @@ public class ControllerGUI extends javax.swing.JFrame implements MouseListener, 
 		{
 			jButtonDown.setIcon(new ImageIcon(getClass().getClassLoader().getResource("Images/GoingDown.png")));
 
-			Command.setTravelSpeed();
+			Command.setTravelSpeed(1);
 			
 			Command.startMove(1);
         }
@@ -913,12 +1162,16 @@ public class ControllerGUI extends javax.swing.JFrame implements MouseListener, 
 		{
 			jButtonRight.setIcon(new ImageIcon(getClass().getClassLoader().getResource("Images/GoingRight.png")));
 			
+			Command.setTravelSpeed(1);
+			
 			Command.startRotate(0);		
         }
 		
 		if(arg0.getComponent() == jButtonLeft)
 		{
 			jButtonLeft.setIcon(new ImageIcon(getClass().getClassLoader().getResource("Images/GoingLeft.png")));
+			
+			Command.setTravelSpeed(1);
 			
 			Command.startRotate(1);		
         }
@@ -927,12 +1180,16 @@ public class ControllerGUI extends javax.swing.JFrame implements MouseListener, 
 		{
 			jButtonArmClockwise.setIcon(new ImageIcon(getClass().getClassLoader().getResource("Images/GoingClockwise.png")));
 			
+			Command.setTravelSpeed(8);
+			
 			Command.startRotateArm(0);
 		}
 		
 		if(arg0.getComponent() == jButtonArmCounterclockwise)
 		{
 			jButtonArmCounterclockwise.setIcon(new ImageIcon(getClass().getClassLoader().getResource("Images/GoingCounterclockwise.png")));
+			
+			Command.setTravelSpeed(8);
 			
 			Command.startRotateArm(1);
 		}
@@ -982,7 +1239,7 @@ public class ControllerGUI extends javax.swing.JFrame implements MouseListener, 
 					jButtonDown.setIcon(new ImageIcon(getClass().getClassLoader().getResource("Images/GoingDown.png")));
 				}
 				
-				Command.setTravelSpeed();
+				Command.setTravelSpeed(1);
 				
 				if(arg0.getKeyCode() == KeyEvent.VK_UP)
 				{
@@ -997,6 +1254,8 @@ public class ControllerGUI extends javax.swing.JFrame implements MouseListener, 
 		
 			if(arg0.getKeyCode() == KeyEvent.VK_LEFT || arg0.getKeyCode() == KeyEvent.VK_RIGHT)
 			{
+				Command.setTravelSpeed(1);
+				
 				if(arg0.getKeyCode() == KeyEvent.VK_RIGHT)
 				{
 					jButtonRight.setIcon(new ImageIcon(getClass().getClassLoader().getResource("Images/GoingRight.png")));
@@ -1022,6 +1281,24 @@ public class ControllerGUI extends javax.swing.JFrame implements MouseListener, 
 				
 				Command.stop(0);
 			}
+			
+			if(arg0.getKeyCode() == KeyEvent.VK_D)
+			{
+				jButtonArmClockwise.setIcon(new ImageIcon(getClass().getClassLoader().getResource("Images/GoingClockwise.png")));
+				
+				Command.setTravelSpeed(8);
+				
+				Command.startRotateArm(0);
+			}
+			
+			if(arg0.getKeyCode() == KeyEvent.VK_A)
+			{
+				jButtonArmCounterclockwise.setIcon(new ImageIcon(getClass().getClassLoader().getResource("Images/GoingCounterclockwise.png")));
+				
+				Command.setTravelSpeed(8);
+				
+				Command.startRotateArm(1);
+			}
 		}
 	}
 
@@ -1038,6 +1315,17 @@ public class ControllerGUI extends javax.swing.JFrame implements MouseListener, 
 			jButtonDown.setIcon(new ImageIcon(getClass().getClassLoader().getResource("Images/Down.png")));		
 			
 			Command.stop(0);
+		}
+		
+		if(arg0.getKeyCode() == KeyEvent.VK_D || arg0.getKeyCode() == KeyEvent.VK_A)
+		{
+			if(arg0.getKeyCode() == KeyEvent.VK_D)
+				jButtonArmClockwise.setIcon(new ImageIcon(getClass().getClassLoader().getResource("Images/Clockwise.png")));
+			
+			if(arg0.getKeyCode() == KeyEvent.VK_A)
+				jButtonArmCounterclockwise.setIcon(new ImageIcon(getClass().getClassLoader().getResource("Images/Counterclockwise.png")));
+			
+			Command.stop(1);
 		}
 	}
 

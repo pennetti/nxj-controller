@@ -1,59 +1,25 @@
 import java.util.ArrayList;
 
-
 public class CommandLog {
-	
-	ArrayList <Command> commandLog;
 
-	public static void main (String [] args) {
-		
+	private static ArrayList<String> allCommands = new ArrayList<String>();
+	private static ArrayList<String> sentCommands = new ArrayList<String>();
+	private static ArrayList<String> receivedCommands = new ArrayList<String>();
+	
+	public static void addSentCommand(String command)
+	{
+		allCommands.add(command);
+		sentCommands.add(command);
 	}
 	
-	/**
-	 * InfoHiding: doesn't know command definitions or command
-	 * formatting
-	 */
-	public void retrieveCommand() {
-		
+	public static void addReceivedCommand(String command)
+	{
+		allCommands.add(command);
+		receivedCommands.add(command);
 	}
 	
-	/**
-	 * InfoHiding: doesn't know command definitions or command
-	 * formatting
-	 *
-	 * @param cmd
-	 */
-	public void printCommand (int cmd) {
-		
-	}
-	
-	/**
-	 * InfoHiding: doesn't know command definitions or command
-	 * formatting
-	 *
-	 * @param cmd
-	 */
-	public void printCommandToFile (int cmd) {
-		
-	}
-	
-	/**
-	 * InfoHiding: doesn't know command definitions or command
-	 * formatting
-	 *
-	 * @param cmd
-	 */
-	public void printCommandLog (ArrayList <Command> log) {
-		
-	}
-	
-	/**
-	 * InfoHiding: doesn't know command definitions or command
-	 * formatting
-	 *
-	 * @param cmd
-	 */
-	public void printCommandLogToFile (ArrayList <Command> log) {
-		
+	public static String getLastSentCommand()
+	{
+		return sentCommands.get(sentCommands.size() - 1);
 	}
 }
